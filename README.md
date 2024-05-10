@@ -18,9 +18,9 @@ README.md: Overview and guide for navigating the repository.
 ## Collaborators and Contributions
 Fang Jia: Focused on predictive modeling and significantly contributed to the methodology and result interpretation sections.
 
-Yuyang Sun: Led the data cleaning and survival analysis parts, ensuring data integrity and robustness in survival estimates.
+Yuyang Sun: Focus on survival analysis parts, ensuring data integrity and robustness in survival estimates.
 
-Ng Tsz Wai: Specialized in causal machine learning models, providing insights into factors influencing readmissions.
+Ng Tsz Wai: Led the data cleaning and specialized in causal machine learning models, providing insights into factors influencing readmissions.
 
 ## Usage
 Each notebook is designed to be self-contained and includes detailed comments explaining the steps of the analysis. Users are encouraged to review the Data_Cleaning.ipynb notebook first to understand the dataset's structure and preprocessing steps.
