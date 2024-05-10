@@ -18,7 +18,7 @@ README.md: Overview and guide for navigating the repository.
 ## Collaborators and Contributions
 Fang Jia: Focused on predictive modeling and significantly contributed to the methodology and result interpretation sections.
 
-Yuyang Sun: Focus on survival analysis parts, ensuring data integrity and robustness in survival estimates.
+Yuyang Sun: Focus on survival analysis parts and significantly contributed to the methodology and result interpretation sections.
 
 Ng Tsz Wai: Led the data cleaning and specialized in causal machine learning models, providing insights into factors influencing readmissions.
 
