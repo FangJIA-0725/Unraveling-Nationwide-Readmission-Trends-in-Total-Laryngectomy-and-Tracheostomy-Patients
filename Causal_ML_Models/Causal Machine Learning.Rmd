@@ -1,0 +1,541 @@
+---
+title: "Causal Machine Learning for Unraveling Nationwide Readmission Trends in Total Tracheostomy Patients"
+author: "TSZWAI NG"
+date: "2024-05-06"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE}
+library(grf)
+library(ggplot2) 
+library(zoo) 
+library(ggridges)
+library("data.table")
+library(purrr)
+library(dplyr)
+library(tidyr)
+library(readr)
+```
+
+```{r}
+# Read data
+core_2018_0B11 <- read_csv("core_2018_0B11_analysis.csv")
+```
+
+```{r}
+# Read data
+core_2019_0B11 <- read_csv("core_2019_0B11_analysis.csv")
+```
+
+```{r}
+# Filter the 2019 data to include only entries with positive Length of Stay and Total Charges
+core_2019_0B11 <- core_2019_0B11 %>% filter(LOS >0, TOTCHG>0)
+```
+
+# First treatment: Elective
+```{r}
+# Select variables for the Elective treatment analysis
+X1 <- core_2018_0B11[, c('APRDRG_Risk_Mortality', 'AGE','TOTCHG',"FEMALE","PAY1","ZIPINC_QRTL","DMONTH","DISPUNIFORM","HCUP_ED","Procedure_Count","Diagnosis_Count","APRDRG_Severity")]
+W1 <- core_2018_0B11$ELECTIVE
+Y <- core_2018_0B11$revisit
+```
+
+```{r}
+# Fit a regression forest to predict the revisit outcome based on selected variables
+Y1_forest <- regression_forest(X1 , Y)
+Y1_hat <- predict(Y1_forest, X1)$predictions
+```
+
+```{r}
+# Fit a regression forest to predict the Elective treatment based on selected variables
+W1_forest <- regression_forest(X1, W1)
+W1_hat <- predict(W1_forest, X1)$predictions
+```
+
+
+```{r}
+# Fit a causal forest model using the predictions from the previous models
+cf1 <- causal_forest(X1, Y, W1, Y.hat = Y1_hat, W.hat = W1_hat,
+                    num.trees = 8000,
+                    min.node.size = 10,
+                    tune.parameters = c("min.node.size", "sample.fraction"))
+```
+
+
+```{r}
+# Omnibus test for heterogeneity
+test_calibration(cf1)
+```
+
+```{r}
+# Calculate the average treatment effect from the causal forest model
+a1 <- average_treatment_effect(cf1, target.sample = 'all')
+
+# Get out - of - bag predictions for all patients .
+oob.preds1 <- predict(cf1, estimate.variance = TRUE)
+```
+
+```{r}
+# Combine the original 2018 data with the out-of-bag predictions
+core_2018_0B11_1 <- cbind(core_2018_0B11,oob.preds1)
+```
+
+
+```{r}
+# Prepare the test set for 2019 using similar variables as the training set
+X1_test <- core_2019_0B11[, c('APRDRG_Risk_Mortality', 'AGE','TOTCHG',"FEMALE","PAY1","ZIPINC_QRTL","DMONTH","DISPUNIFORM","HCUP_ED","Procedure_Count","Diagnosis_Count","APRDRG_Severity")]
+W1_test <- core_2019_0B11$ELECTIVE
+Y_test <- core_2019_0B11$revisit
+```
+
+
+```{r}
+# Predict outcomes for the 2019 test data
+oob.preds.test1 <- predict(cf1, X1_test, estimate.variance = TRUE)
+core_2019_0B11_1 <- cbind(core_2019_0B11, oob.preds.test1)
+```
+
+
+
+```{r}
+# Extract the columns for calculation below
+point.estimates1 <- oob.preds.test1$predictions
+var.estimates1 <- oob.preds.test1$variance.estimates
+
+# Calculate standard error estimates
+se.estimates1 <- sqrt(var.estimates1)
+
+# Calculate 95% confidence interval
+ci.lower1 <- point.estimates1 - 1.96 * se.estimates1
+ci.upper1 <- point.estimates1 + 1.96 * se.estimates1
+
+# Add the calculation to the dataset
+core_2019_0B11_1$CI_lower <- ci.lower1
+core_2019_0B11_1$CI_upper <- ci.upper1
+```
+
+
+```{r}
+# Plot graph
+ggplot(core_2019_0B11_1, aes(x = AGE, y = predictions)) +
+    geom_point() +
+    theme_minimal() +
+    labs(title = "Treatment Efficacy by Age", x = "Age", y = "Treatment Effect")
+```
+
+
+
+```{r}
+# Plot graph
+ggplot(core_2019_0B11_1, aes(x = TOTCHG, y = predictions, colour = AGE)) +
+    geom_point() +
+    theme_minimal() +
+    labs(title = "Impact of Elective Treatment on Outcomes by TOTCHG and Age", x = "TOTCHG", y = "Treatment Effect")
+```
+
+
+
+```{r}
+# Modify the 2018 dataset to include a new binary variable 'Treatment2'
+core_2018_0B11 <- core_2018_0B11 %>%
+  mutate(Treatment2 = ifelse(APRDRG_Severity==3|APRDRG_Severity==4,1,0))
+```
+
+```{r}
+# Modify the 2019 dataset to include a new binary variable 'Treatment2'
+core_2019_0B11 <- core_2019_0B11 %>%
+  mutate(Treatment2 = ifelse(APRDRG_Severity==3|APRDRG_Severity==4,1,0))
+```
+
+# Second treatment: APRDRG_Severity
+```{r}
+X2 <- core_2018_0B11[, c('APRDRG_Risk_Mortality', 'AGE','TOTCHG',"FEMALE","PAY1","ZIPINC_QRTL","DMONTH","DISPUNIFORM","HCUP_ED","Procedure_Count","Diagnosis_Count")]
+W2 <- core_2018_0B11$Treatment2
+Y <- core_2018_0B11$revisit
+```
+
+```{r}
+Y2_forest <- regression_forest(X2 , Y)
+Y2_hat <- predict(Y2_forest, X2)$predictions
+```
+
+```{r}
+W2_forest <- regression_forest(X2, W2)
+W2_hat <- predict(W2_forest, X2)$predictions
+```
+
+
+```{r}
+cf2 <- causal_forest(X2, Y, W2, Y.hat = Y2_hat, W.hat = W2_hat,
+                    num.trees = 8000,
+                    min.node.size = 10,
+                    tune.parameters = c("min.node.size", "sample.fraction"))
+```
+
+
+```{r}
+# Omnibus test for heterogeneity
+test_calibration(cf2)
+```
+
+```{r}
+a2 <- average_treatment_effect(cf2, target.sample = 'control')
+# Get out - of - bag predictions for all patients .
+oob.preds2 <- predict(cf2, estimate.variance = TRUE)
+```
+
+```{r}
+core_2018_0B11_2 <- cbind(core_2018_0B11,oob.preds2)
+```
+
+
+```{r}
+X2_test <- core_2019_0B11[, c('APRDRG_Risk_Mortality', 'AGE','TOTCHG',"FEMALE","PAY1","ZIPINC_QRTL","DMONTH","DISPUNIFORM","HCUP_ED","Procedure_Count","Diagnosis_Count")]
+W2_test <- core_2019_0B11$Treatment2
+Y2_test <- core_2019_0B11$revisit
+```
+
+
+```{r}
+oob.preds.test2 <- predict(cf2, X2_test, estimate.variance = TRUE)
+core_2019_0B11_2 <- cbind(core_2019_0B11, oob.preds.test2)
+```
+
+
+
+```{r}
+point.estimates2 <- oob.preds.test2$predictions
+var.estimates2 <- oob.preds.test2$variance.estimates
+
+se.estimates2 <- sqrt(var.estimates2)
+
+ci.lower2 <- point.estimates2 - 1.96 * se.estimates2
+ci.upper2 <- point.estimates2 + 1.96 * se.estimates2
+
+core_2019_0B11_2$CI_lower <- ci.lower2
+core_2019_0B11_2$CI_upper <- ci.upper2
+```
+
+
+```{r}
+ggplot(core_2019_0B11_2, aes(x = AGE, y = predictions)) +
+    geom_point() +
+    theme_minimal() +
+    labs(title = "Treatment Efficacy by Age", x = "Age", y = "Treatment Effect")
+```
+
+```{r}
+ggplot(core_2019_0B11_2, aes(x = TOTCHG, y = predictions, colour = AGE)) +
+    geom_point() +
+    theme_minimal() +
+    labs(title = "Impact of Severity Treatment on Outcomes by TOTCHG and Age", x = "TOTCHG", y = "Treatment Effect")
+```
+
+
+```{r}
+# Calculate the mean of the Diagnosis_Count
+mean_dia_count <- mean(core_2018_0B11$Diagnosis_Count)
+mean_dia_count2 <- mean(core_2019_0B11$Diagnosis_Count)
+```
+
+```{r}
+# Modify the 2019 dataset to include a new binary variable 'Treatment3'
+core_2018_0B11 <- core_2018_0B11 %>%
+  mutate(Treatment3 = ifelse(Diagnosis_Count>mean_dia_count,1,0))
+```
+
+```{r}
+# Modify the 2019 dataset to include a new binary variable 'Treatment3'
+core_2019_0B11 <- core_2019_0B11 %>%
+  mutate(Treatment3 = ifelse(Diagnosis_Count>mean_dia_count2,1,0))
+```
+
+
+# Third treatment: Diagnosis_Count
+```{r}
+X3 <- core_2018_0B11[, c('APRDRG_Risk_Mortality', 'AGE','TOTCHG',"FEMALE","PAY1","ZIPINC_QRTL","DMONTH","DISPUNIFORM","HCUP_ED","Procedure_Count","APRDRG_Severity")]
+W3 <- core_2018_0B11$Treatment3
+Y <- core_2018_0B11$revisit
+```
+
+```{r}
+Y3_forest <- regression_forest(X3 , Y)
+Y3_hat <- predict(Y3_forest, X3)$predictions
+```
+
+```{r}
+W3_forest <- regression_forest(X3, W3)
+W3_hat <- predict(W3_forest, X3)$predictions
+```
+
+
+```{r}
+cf3 <- causal_forest(X3, Y, W3, Y.hat = Y3_hat, W.hat = W3_hat,
+                    num.trees = 8000,
+                    min.node.size = 10,
+                    tune.parameters = c("min.node.size", "sample.fraction"))
+```
+
+
+```{r}
+# Omnibus test for heterogeneity
+test_calibration(cf3)
+```
+
+```{r}
+a3 <- average_treatment_effect(cf3, target.sample = 'control')
+# Get out - of - bag predictions for all patients .
+oob.preds3 <- predict(cf3, estimate.variance = TRUE)
+```
+
+```{r}
+core_2018_0B11_3 <- cbind(core_2018_0B11,oob.preds3,a3)
+```
+
+
+```{r}
+X3_test <- core_2019_0B11[, c('APRDRG_Risk_Mortality', 'AGE','TOTCHG',"FEMALE","PAY1","ZIPINC_QRTL","DMONTH","DISPUNIFORM","HCUP_ED","Procedure_Count","APRDRG_Severity")]
+W3_test <- core_2019_0B11$Treatment3
+Y_test <- core_2019_0B11$revisit
+```
+
+
+```{r}
+oob.preds.test3 <- predict(cf3, X3_test, estimate.variance = TRUE)
+core_2019_0B11_3 <- cbind(core_2019_0B11, oob.preds.test3)
+```
+
+
+
+```{r}
+point.estimates3 <- oob.preds.test3$predictions
+var.estimates3 <- oob.preds.test3$variance.estimates
+
+
+se.estimates3 <- sqrt(var.estimates3)
+
+
+ci.lower3 <- point.estimates3 - 1.96 * se.estimates3
+ci.upper3 <- point.estimates3 + 1.96 * se.estimates3
+
+
+core_2019_0B11_3$CI_lower <- ci.lower3
+core_2019_0B11_3$CI_upper <- ci.upper3
+```
+
+
+```{r}
+ggplot(core_2019_0B11_3, aes(x = AGE, y = predictions)) +
+    geom_point() +
+    theme_minimal() + 
+    labs(title = "Treatment Efficacy by Age", x = "Age", y = "Treatment Effect")
+```
+
+```{r}
+ggplot(core_2019_0B11_3, aes(x = TOTCHG, y = predictions, colour = AGE)) +
+    geom_point() +
+    theme_minimal() +
+    labs(title = "Impact of Diagnosis Count Treatment on Outcomes by TOTCHG and Age", x = "TOTCHG", y = "Treatment Effect")
+```
+
+```{r}
+# Calculate the mean of the Procedure Count
+mean_pro_count <- mean(core_2018_0B11$Procedure_Count)
+mean_pro_count2 <- mean(core_2019_0B11$Procedure_Count)
+```
+
+```{r}
+# Modify the 2019 dataset to include a new binary variable 'Treatment4'
+core_2018_0B11 <- core_2018_0B11 %>%
+  mutate(Treatment4 = ifelse(Procedure_Count>mean_pro_count,1,0))
+```
+
+```{r}
+# Modify the 2019 dataset to include a new binary variable 'Treatment4'
+core_2019_0B11 <- core_2019_0B11 %>%
+  mutate(Treatment4 = ifelse(Procedure_Count>mean_pro_count2,1,0))
+```
+
+
+# Fourth treatment: Procedure Count
+```{r}
+X4 <- core_2018_0B11[, c('APRDRG_Risk_Mortality', 'AGE','TOTCHG',"FEMALE","PAY1","ZIPINC_QRTL","DMONTH","DISPUNIFORM","HCUP_ED","Diagnosis_Count","APRDRG_Severity")]
+W4 <- core_2018_0B11$Treatment4
+Y <- core_2018_0B11$revisit
+```
+
+```{r}
+Y4_forest <- regression_forest(X4 , Y)
+Y4_hat <- predict(Y4_forest, X4)$predictions
+```
+
+```{r}
+W4_forest <- regression_forest(X4, W4)
+W4_hat <- predict(W4_forest, X4)$predictions
+```
+
+
+```{r}
+cf4 <- causal_forest(X4, Y, W4, Y.hat = Y4_hat, W.hat = W4_hat,
+                    num.trees = 8000,
+                    min.node.size = 10,
+                    tune.parameters = c("min.node.size", "sample.fraction"))
+```
+
+
+```{r}
+# Omnibus test for heterogeneity
+test_calibration(cf4)
+```
+
+```{r}
+a4 <- average_treatment_effect(cf4, target.sample = 'treated')
+# Get out - of - bag predictions for all patients .
+oob.preds4 <- predict(cf4, estimate.variance = TRUE)
+```
+
+```{r}
+core_2018_0B11_4 <- cbind(core_2018_0B11,oob.preds4)
+```
+
+```{r}
+X4_test <- core_2019_0B11[, c('APRDRG_Risk_Mortality', 'AGE','TOTCHG',"FEMALE","PAY1","ZIPINC_QRTL","DMONTH","DISPUNIFORM","HCUP_ED","Diagnosis_Count","APRDRG_Severity")]
+W4_test <- core_2019_0B11$Treatment4
+Y_test <- core_2019_0B11$revisit
+```
+
+
+```{r}
+oob.preds.test4 <- predict(cf4, X4_test, estimate.variance = TRUE)
+core_2019_0B11_4 <- cbind(core_2019_0B11, oob.preds.test4)
+```
+
+
+
+```{r}
+point.estimates4 <- oob.preds.test4$predictions
+var.estimates4 <- oob.preds.test4$variance.estimates
+
+se.estimates4 <- sqrt(var.estimates4)
+
+ci.lower4 <- point.estimates4 - 1.96 * se.estimates4
+ci.upper4 <- point.estimates4 + 1.96 * se.estimates4
+
+core_2019_0B11_4$CI_lower <- ci.lower4
+core_2019_0B11_4$CI_upper <- ci.upper4
+```
+
+
+```{r}
+ggplot(core_2019_0B11_4, aes(x = AGE, y = predictions)) +
+    geom_point() +
+    theme_minimal() +
+    labs(title = "Treatment Efficacy by Age", x = "Age", y = "Treatment Effect")
+```
+
+```{r}
+ggplot(core_2019_0B11_4, aes(x = TOTCHG, y = predictions, colour = AGE)) +
+    geom_point() +
+    theme_minimal() +
+    labs(title = "Impact of Procedure Count Treatment on Outcomes by TOTCHG and Age", x = "TOTCHG", y = "Treatment Effect")
+```
+
+
+```{r}
+# Modify the 2019 dataset to include a new binary variable 'Treatment5'
+core_2018_0B11 <- core_2018_0B11 %>%
+  mutate(Treatment5 = ifelse(APRDRG_Risk_Mortality==3|APRDRG_Risk_Mortality==4,1,0))
+```
+
+```{r}
+# Modify the 2019 dataset to include a new binary variable 'Treatment5'
+core_2019_0B11 <- core_2019_0B11 %>%
+  mutate(Treatment5 = ifelse(APRDRG_Risk_Mortality==3|APRDRG_Risk_Mortality==4,1,0))
+```
+
+# Fifth treatment: APRDRG_Risk_Mortality
+```{r}
+X5 <- core_2018_0B11[, c('AGE','TOTCHG',"FEMALE","PAY1","ZIPINC_QRTL","DMONTH","DISPUNIFORM","HCUP_ED","Procedure_Count","APRDRG_Severity","Diagnosis_Count")]
+W5 <- core_2018_0B11$Treatment5
+Y <- core_2018_0B11$revisit
+```
+
+```{r}
+Y5_forest <- regression_forest(X5 , Y)
+Y5_hat <- predict(Y5_forest, X5)$predictions
+```
+
+```{r}
+W5_forest <- regression_forest(X5, W5)
+W5_hat <- predict(W5_forest, X5)$predictions
+```
+
+
+```{r}
+cf5 <- causal_forest(X5, Y, W5, Y.hat = Y5_hat, W.hat = W5_hat,
+                    num.trees = 8000,
+                    min.node.size = 10,
+                    tune.parameters = c("min.node.size", "sample.fraction"))
+```
+
+
+```{r}
+# Omnibus test for heterogeneity
+test_calibration(cf5)
+```
+
+```{r}
+a5 <- average_treatment_effect(cf5, target.sample = 'control')
+# Get out - of - bag predictions for all patients .
+oob.preds5 <- predict(cf5, estimate.variance = TRUE)
+```
+
+```{r}
+core_2018_0B11_5 <- cbind(core_2018_0B11,oob.preds5)
+```
+
+```{r}
+X5_test <- core_2019_0B11[, c("Diagnosis_Count", 'AGE','TOTCHG',"FEMALE","PAY1","ZIPINC_QRTL","DMONTH","DISPUNIFORM","HCUP_ED","Procedure_Count","APRDRG_Severity")]
+W5_test <- core_2019_0B11$Treatment5
+Y_test <- core_2019_0B11$revisit
+```
+
+
+```{r}
+oob.preds.test5 <- predict(cf5, X5_test, estimate.variance = TRUE)
+core_2019_0B11_5 <- cbind(core_2019_0B11, oob.preds.test5)
+```
+
+
+
+```{r}
+point.estimates5 <- oob.preds.test5$predictions
+var.estimates5 <- oob.preds.test5$variance.estimates
+
+se.estimates5 <- sqrt(var.estimates5)
+
+ci.lower5 <- point.estimates5 - 1.96 * se.estimates5
+ci.upper5 <- point.estimates5 + 1.96 * se.estimates5
+
+core_2019_0B11_5$CI_lower <- ci.lower5
+core_2019_0B11_5$CI_upper <- ci.upper5
+```
+
+
+```{r}
+ggplot(core_2019_0B11_5, aes(x = AGE, y = predictions)) +
+    geom_point() +
+    theme_minimal() + 
+    labs(title = "Treatment Efficacy by Age", x = "Age", y = "Treatment Effect")
+```
+
+```{r}
+ggplot(core_2019_0B11_5, aes(x = TOTCHG, y = predictions, colour = AGE)) +
+    geom_point() +
+    theme_minimal() +
+    labs(title = "Impact of Risk Mortality Treatment on Outcomes by TOTCHG and Age", x = "TOTCHG", y = "Treatment Effect")
+```
