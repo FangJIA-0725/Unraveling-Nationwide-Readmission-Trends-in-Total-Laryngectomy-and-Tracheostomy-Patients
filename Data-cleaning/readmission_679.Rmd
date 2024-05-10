@@ -1,0 +1,343 @@
+---
+title: "679_Data_cleaning"
+output: pdf_document
+date: "2024-04-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("data.table")
+library(dplyr)
+library(purrr)
+library(survival)
+library(dplyr)
+library(tidyr)
+```
+
+
+# read files
+```{r}
+core_2018_0B11 <- read.csv("core_2018_0B11.csv")
+core_2019_0B11 <- read.csv("core_2019_0B11.csv")
+
+core_2018_0CTS <- read.csv("core_2018_0CTS.csv")
+core_2019_0CTS <- read.csv("core_2019_0CTS.csv")
+```
+
+```{r}
+# filter 2018 with 0b11
+filter_0B11_core_2018 <- core_2018 %>% filter(grepl('^0B11', I10_PR1)|grepl('^0B11', I10_PR2)|grepl('^0B11', I10_PR3)|
+                                      grepl('^0B11', I10_PR4)|
+                                      grepl('^0B11', I10_PR5)|
+                                      grepl('^0B11', I10_PR6)|
+                                      grepl('^0B11', I10_PR7)|
+                                      grepl('^0B11', I10_PR8)|
+                                      grepl('^0B11', I10_PR9)|
+                                      grepl('^0B11', I10_PR10)|
+                                      grepl('^0B11', I10_PR11)|
+                                      grepl('^0B11', I10_PR12)|
+                                      grepl('^0B11', I10_PR13)|
+                                      grepl('^0B11', I10_PR14)|
+                                      grepl('^0B11', I10_PR15)|
+                                      grepl('^0B11', I10_PR16)|
+                                      grepl('^0B11', I10_PR17)|
+                                      grepl('^0B11', I10_PR18)|
+                                      grepl('^0B11', I10_PR19)|
+                                      grepl('^0B11', I10_PR20)|
+                                      grepl('^0B11', I10_PR21)|
+                                      grepl('^0B11', I10_PR22)|
+                                      grepl('^0B11', I10_PR23)|
+                                      grepl('^0B11', I10_PR24)|
+                                      grepl('^0B11', I10_PR25))
+```
+
+```{r}
+# filter core 2018 with 0cts
+filter_0CTS_core_2018 <- core_2018 %>% filter(grepl('^0CTS', I10_PR1)|grepl('^0CTS', I10_PR2)|grepl('^0CTS', I10_PR3)|
+                                      grepl('^0CTS', I10_PR4)|
+                                      grepl('^0CTS', I10_PR5)|
+                                      grepl('^0CTS', I10_PR6)|
+                                      grepl('^0CTS', I10_PR7)|
+                                      grepl('^0CTS', I10_PR8)|
+                                      grepl('^0CTS', I10_PR9)|
+                                      grepl('^0CTS', I10_PR10)|
+                                      grepl('^0CTS', I10_PR11)|
+                                      grepl('^0CTS', I10_PR12)|
+                                      grepl('^0CTS', I10_PR13)|
+                                      grepl('^0CTS', I10_PR14)|
+                                      grepl('^0CTS', I10_PR15)|
+                                      grepl('^0CTS', I10_PR16)|
+                                      grepl('^0CTS', I10_PR17)|
+                                      grepl('^0CTS', I10_PR18)|
+                                      grepl('^0CTS', I10_PR19)|
+                                      grepl('^0CTS', I10_PR20)|
+                                      grepl('^0CTS', I10_PR21)|
+                                      grepl('^0CTS', I10_PR22)|
+                                      grepl('^0CTS', I10_PR23)|
+                                      grepl('^0CTS', I10_PR24)|
+                                      grepl('^0CTS', I10_PR25))
+```
+
+```{r}
+# filter 2019 with 0b11
+filter_0B11_core_2019 <- core_2019 %>% filter(grepl('^0B11', I10_PR1)|grepl('^0B11', I10_PR2)|grepl('^0B11', I10_PR3)|
+                                                grepl('^0B11', I10_PR4)|
+                                                grepl('^0B11', I10_PR5)|
+                                                grepl('^0B11', I10_PR6)|
+                                                grepl('^0B11', I10_PR7)|
+                                                grepl('^0B11', I10_PR8)|
+                                                grepl('^0B11', I10_PR9)|
+                                                grepl('^0B11', I10_PR10)|
+                                                grepl('^0B11', I10_PR11)|
+                                                grepl('^0B11', I10_PR12)|
+                                                grepl('^0B11', I10_PR13)|
+                                                grepl('^0B11', I10_PR14)|
+                                                grepl('^0B11', I10_PR15)|
+                                                grepl('^0B11', I10_PR16)|
+                                                grepl('^0B11', I10_PR17)|
+                                                grepl('^0B11', I10_PR18)|
+                                                grepl('^0B11', I10_PR19)|
+                                                grepl('^0B11', I10_PR20)|
+                                                grepl('^0B11', I10_PR21)|
+                                                grepl('^0B11', I10_PR22)|
+                                                grepl('^0B11', I10_PR23)|
+                                                grepl('^0B11', I10_PR24)|
+                                                grepl('^0B11', I10_PR25))
+```
+
+
+```{r}
+# filter core 2019 with 0cts
+filter_0CTS_core_2019 <- core_2019 %>% filter(grepl('^0CTS', I10_PR1)|grepl('^0CTS', I10_PR2)|grepl('^0CTS', I10_PR3)|
+                                                grepl('^0CTS', I10_PR4)|
+                                                grepl('^0CTS', I10_PR5)|
+                                                grepl('^0CTS', I10_PR6)|
+                                                grepl('^0CTS', I10_PR7)|
+                                                grepl('^0CTS', I10_PR8)|
+                                                grepl('^0CTS', I10_PR9)|
+                                                grepl('^0CTS', I10_PR10)|
+                                                grepl('^0CTS', I10_PR11)|
+                                                grepl('^0CTS', I10_PR12)|
+                                                grepl('^0CTS', I10_PR13)|
+                                                grepl('^0CTS', I10_PR14)|
+                                                grepl('^0CTS', I10_PR15)|
+                                                grepl('^0CTS', I10_PR16)|
+                                                grepl('^0CTS', I10_PR17)|
+                                                grepl('^0CTS', I10_PR18)|
+                                                grepl('^0CTS', I10_PR19)|
+                                                grepl('^0CTS', I10_PR20)|
+                                                grepl('^0CTS', I10_PR21)|
+                                                grepl('^0CTS', I10_PR22)|
+                                                grepl('^0CTS', I10_PR23)|
+                                                grepl('^0CTS', I10_PR24)|
+                                                grepl('^0CTS', I10_PR25))
+```
+
+# filter out the patients died
+```{r}
+# core_2018_0B11 <- core_2018_0B11 %>%
+#   filter(DIED == 0)
+# core_2019_0B11 <- core_2019_0B11 %>%
+#   filter(DIED == 0)
+# 
+# core_2018_0CTS <- core_2018_0CTS %>%
+#   filter(DIED == 0)
+# core_2019_0CTS <- core_2019_0CTS %>%
+#   filter(DIED == 0)
+```
+
+# filter the patients have revisit 
+```{r}
+core_2018_0B11 <- core_2018_0B11 %>%
+  filter(NRD_DaysToEvent>0) %>%
+  group_by(NRD_VisitLink) %>%
+  filter(n() > 1)
+
+core_2019_0B11 <- core_2019_0B11 %>%
+  filter(NRD_DaysToEvent>0) %>%
+  group_by(NRD_VisitLink) %>%
+  filter(n() > 1)
+
+core_2018_0CTS <- core_2018_0CTS %>%
+  filter(NRD_DaysToEvent>0) %>%
+  group_by(NRD_VisitLink) %>%
+  filter(n() > 1)
+
+core_2019_0CTS <- core_2019_0CTS %>%
+  filter(NRD_DaysToEvent>0) %>%
+  group_by(NRD_VisitLink) %>%
+  filter(n() > 1)
+```
+
+
+
+# extract the unique visit_link
+```{r}
+visit_link_0B112018 <- core_2018_0B11 %>%
+  select(NRD_VisitLink, NRD_DaysToEvent,LOS)
+
+
+revisit_0B112018 <- visit_link_0B112018 %>%
+  group_by(NRD_VisitLink) %>%
+  mutate(row_id = row_number()) %>%
+  ungroup() %>%
+  pivot_wider(
+    names_from = row_id,
+    values_from = c(NRD_DaysToEvent, LOS),
+    names_sep = "_"
+  )
+
+```
+
+
+```{r}
+# Add new columns to the datase
+revisit_0B112018$min_daystoevent <- NA
+revisit_0B112018$max_daystoevent <- NA
+revisit_0B112018$los_min <- NA
+revisit_0B112018$los_max <- NA
+
+# Find the day that patients first and second visit the hospital
+for (i in 1:nrow(revisit_0B112018)) {
+    
+
+  days_list <- c(revisit_0B112018$NRD_DaysToEvent_1[i], revisit_0B112018$NRD_DaysToEvent_2[i], revisit_0B112018$NRD_DaysToEvent_3[i])
+
+  los_list <- c(revisit_0B112018$LOS_1[i], revisit_0B112018$LOS_2[i], revisit_0B112018$LOS_3[i])
+  
+
+  valid_indices <- which(!is.na(days_list))
+  
+
+  valid_days <- days_list[valid_indices]
+  valid_los <- los_list[valid_indices]
+  
+
+  sorted_indices <- order(valid_days)
+  sorted_days <- valid_days[sorted_indices]
+  sorted_los <- valid_los[sorted_indices]
+
+
+  revisit_0B112018$min_daystoevent[i] <- sorted_days[1]
+  revisit_0B112018$los_min[i] <- sorted_los[1]
+
+
+  if (length(sorted_days) > 1) {
+    revisit_0B112018$max_daystoevent[i] <- sorted_days[min(2, length(sorted_days))]
+    revisit_0B112018$los_max[i] <- sorted_los[min(2, length(sorted_days))]
+  }
+}
+```
+
+
+# calculate the readmissiontime
+```{r}
+revisit_0B112018 <- revisit_0B112018 %>%
+  mutate(revisit =  max_daystoevent - min_daystoevent - los_min)
+
+```
+
+# filter the revisit time that is within 30 days
+```{r}
+revisit_0B112018 <- revisit_0B112018 %>%
+  filter(revisit < 31)
+```
+
+
+# left join
+```{r}
+select_cloums <- revisit_0B112018 %>%
+  select(revisit, max_daystoevent,NRD_VisitLink)
+core_2018_0B11 <- core_2018_0B11 %>%
+  left_join(select_cloums, by = c("NRD_VisitLink" = "NRD_VisitLink", "NRD_DaysToEvent" = "max_daystoevent"))
+```
+
+# turn the revisit columns into binary variable
+# 1 is revisit within 30 days, 0 is not revisit within 30 days
+```{r}
+core_2018_0B11 <- core_2018_0B11 %>%
+  mutate(revisit = ifelse(!is.na(revisit), 1, 0))
+```
+
+
+# extract the unique visit_link
+```{r}
+visit_link_0B112019 <- core_2019_0B11 %>%
+  select(NRD_VisitLink, NRD_DaysToEvent,LOS)
+
+
+revisit_0B112019 <- visit_link_0B112019 %>%
+  group_by(NRD_VisitLink) %>%
+  mutate(row_id = row_number()) %>%
+  ungroup() %>%
+  pivot_wider(
+    names_from = row_id,
+    values_from = c(NRD_DaysToEvent, LOS),
+    names_sep = "_"
+  )
+
+```
+
+
+```{r}
+revisit_0B112019$min_daystoevent <- NA
+revisit_0B112019$max_daystoevent <- NA
+revisit_0B112019$los_min <- NA
+revisit_0B112019$los_max <- NA
+
+
+for (i in 1:nrow(revisit_0B112019)) {
+
+  days_list <- c(revisit_0B112019$NRD_DaysToEvent_1[i], revisit_0B112019$NRD_DaysToEvent_2[i], revisit_0B112019$NRD_DaysToEvent_3[i])
+  los_list <- c(revisit_0B112019$LOS_1[i], revisit_0B112019$LOS_2[i], revisit_0B112019$LOS_3[i])
+  
+  valid_indices <- which(!is.na(days_list))
+  valid_days <- days_list[valid_indices]
+  valid_los <- los_list[valid_indices]
+
+
+  sorted_indices <- order(valid_days)
+  sorted_days <- valid_days[sorted_indices]
+  sorted_los <- valid_los[sorted_indices]
+
+
+  revisit_0B112019$min_daystoevent[i] <- sorted_days[1]
+  revisit_0B112019$los_min[i] <- sorted_los[1]
+
+
+  if (length(sorted_days) > 1) {
+    revisit_0B112019$max_daystoevent[i] <- sorted_days[min(2, length(sorted_days))]
+    revisit_0B112019$los_max[i] <- sorted_los[min(2, length(sorted_days))]
+  }
+}
+```
+
+
+# calculate the readmissiontime
+```{r}
+revisit_0B112019 <- revisit_0B112019 %>%
+  mutate(revisit =  max_daystoevent - min_daystoevent - los_min)
+
+```
+
+# filter the revisit time that is within 30 days
+```{r}
+revisit_0B112019 <- revisit_0B112019 %>%
+  filter(revisit < 31)
+```
+
+
+# left join
+```{r}
+select_cloums <- revisit_0B112019 %>%
+  select(revisit, max_daystoevent,NRD_VisitLink)
+core_2019_0B11 <- core_2019_0B11 %>%
+  left_join(select_cloums, by = c("NRD_VisitLink" = "NRD_VisitLink", "NRD_DaysToEvent" = "max_daystoevent"))
+```
+
+
+```{r}
+core_2019_0B11 <- core_2019_0B11 %>%
+  filter(!(is.na(revisit)))
+```
+
