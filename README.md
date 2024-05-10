@@ -4,15 +4,22 @@ This repository contains the code and analysis for the thesis project titled "Un
 
 ## Repository Structure
 Data_Cleaning.ipynb: Jupyter notebook containing all preprocessing and cleaning steps applied to the dataset. Prepared by Ng Tsz Wai.
+
 Causal_ML_Models.ipynb: Jupyter notebook detailing the causal machine learning analysis. Responsible author: Ng Tsz Wai.
+
 Predictive_Modeling.ipynb: Contains the development and validation of predictive models using Random Forest and XGBoost algorithms. Developed by Fang Jia.
+
 Survival_Analysis.ipynb: Notebook for survival analysis, including Kaplan-Meier and Cox Proportional Hazards models. Managed by Yuyang Sun.
+
 Figures/: Directory containing all figures generated during the analysis, organized by the model type. Each figure is linked to its respective section in the notebooks.
+
 README.md: Overview and guide for navigating the repository.
 
 ## Collaborators and Contributions
 Fang Jia: Focused on predictive modeling and significantly contributed to the methodology and result interpretation sections.
+
 Yuyang Sun: Led the data cleaning and survival analysis parts, ensuring data integrity and robustness in survival estimates.
+
 Ng Tsz Wai: Specialized in causal machine learning models, providing insights into factors influencing readmissions.
 
 ## Usage
@@ -28,6 +35,9 @@ This project is licensed under the terms of the MIT license.
 
 ## Contact
 For questions or feedback related to this project, please reach out to any of the contributors via their university email addresses.
+
 Fang Jia: jiafang@bu.edu
+
 Yuyang Sun: tms28k@bu.edu
+
 Ng Tsz Wai: ngtszwai@bu.edu
