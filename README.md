@@ -7,7 +7,7 @@ Data_Cleaning.ipynb: Jupyter notebook containing all preprocessing and cleaning 
 
 Causal_ML_Models.ipynb: Jupyter notebook detailing the causal machine learning analysis. Responsible author: Ng Tsz Wai.
 
-Predictive_Modeling.ipynb: Contains the development and validation of predictive models using Random Forest and XGBoost algorithms. Developed by Fang Jia.
+Predictive_Modelling.ipynb: Contains the development and validation of predictive models using Random Forest and XGBoost algorithms. Developed by Fang Jia.
 
 Survival_Analysis.ipynb: Notebook for survival analysis, including Kaplan-Meier and Cox Proportional Hazards models. Managed by Yuyang Sun.
 
